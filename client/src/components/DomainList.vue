@@ -1,97 +1,143 @@
 <template>
-	<div>	
-		<div id="main">
-			<div class="container">
-				<div class="row">
-					<div class="col-md">
-						<AppItemList title="Prefixos" v-bind:items="prefixes" v-on:addItem="addPrefix" v-on:deleteItem="deletePrefix"></AppItemList>
-					</div>
-					<div class="col-md">
-						<AppItemList  title="Sufixos" v-bind:items="sufixes" v-on:addItem="addSufix" v-on:deleteItem="deleteSufix"></AppItemList>
-					</div>
-				</div>
-				<br/>
-				<h5>Domínios <span class="badge badge-info">{{ domains.length }}</span></h5>
-				<div class="card">
-					<div class="card-body">
-						<ul class="list-group">
-							<li class="list-group-item" v-for="domain in domains" v-bind:key="domain">
-								{{ domain }}
-							</li>
-						</ul>
-					</div>
-				</div>
+	<div class="container">
+		<div class="row">
+			<div class="col-md">
+				<AppItemList title="Prefixos" type="prefix" v-bind:items="items.prefix" v-on:addItem="addItem" v-on:deleteItem="deleteItem"></AppItemList>
+			</div>
+			<div class="col-md">
+				<AppItemList title="Sufixos" type="suffix" v-bind:items="items.suffix" v-on:addItem="addItem" v-on:deleteItem="deleteItem"></AppItemList>
+			</div>
+		</div>
+		<br/>
+		<h5>Domínios <span class="badge badge-info">{{ domains.length }}</span></h5>
+		<div class="card">
+			<div class="card-body">
+				<ul class="list-group">
+					<li class="list-group-item" v-for="domain in domains" v-bind:key="domain.name">
+						<div class="row">
+							<div class="col-md">
+								{{ domain.name }}
+							</div>
+							<div class="col-md text-right">
+								<a class="btn btn-info" v-bind:href="domain.checkout" target="_blank">
+									<span class="fa fa-shopping-cart"></span>
+								</a>
+							</div>
+						</div>
+					</li>
+				</ul>
 			</div>
 		</div>
 	</div>
 </template>
 
 <script>
-import axios from "axios/dist/axios"
-import "bootstrap/dist/css/bootstrap.css";
-import "font-awesome/css/font-awesome.css";
+import axios from "axios/dist/axios";
 import AppItemList from "./AppItemList";
 export default {
 	name: "app",
-	components:{
+	components: {
 		AppItemList
 	},
 	data: function () {
 		return {
-			prefixes: ["Air", "Jet", "Flight"],
-			sufixes: ["Hub", "Station", "Mart"],
-			domains: ["AirHub", "AirStation", "AirMart", "JetHub", "JetStation", "JetMart", "FlightHub", "FlighStation", "FlightMart"]
+			items: {
+				prefix: [],
+				suffix: []
+			}
 		};
 	},
 	methods: {
-		addPrefix(prefix) {
-			this.prefixes.push(prefix);
-			this.generate();
-		},
-		deletePrefix(prefix) {
-			this.prefixes.splice(this.prefixes.indexOf(prefix), 1);
-			this.generate();
-		},
-		addSufix(sufix) {
-			this.sufixes.push(sufix);
-			this.generate();
-		},
-		deleteSufix(sufix) {
-			this.sufixes.splice(this.sufixes.indexOf(sufix), 1);
-			this.generate();
-		},
-		generate() {
-			this.domains = [];
-			for (const prefix of this.prefixes) {
-				for (const sufix of this.sufixes) {
-					this.domains.push(prefix + sufix);
+		addItem(item) {
+			axios({
+				url: "http://localhost:4000",
+				method: "post",
+				data: {
+					query: `
+						mutation ($item: ItemInput) {
+							newItem: saveItem(item: $item) {
+								id
+								type
+								description
+							}
+						}
+					`,
+					variables: {
+						item
+					}
 				}
-			}
+			}).then(response => {
+				const query = response.data;
+				const newItem = query.data.newItem;
+				this.items[item.type].push(newItem);
+			});
+		},
+		deleteItem(item) {
+			axios({
+				url: "http://localhost:4000",
+				method: "post",
+				data: {
+					query: `
+						mutation ($id: Int) {
+							deleted: deleteItem(id: $id)
+						}
+					`,
+					variables: {
+						id: item.id
+					}
+				}
+			}).then(() => {
+				this.getItems(item.type);
+			});
+		},
+		getItems(type) {
+			axios({
+				url: "http://localhost:4000",
+				method: "post",
+				data: {
+					query: `
+						query ($type: String) {
+							items: items (type: $type) {
+								id
+								type
+								description
+							}
+						}
+					`,
+					variables: {
+						type
+					}
+				}
+			}).then(response => {
+				const query = response.data;
+				this.items[type] = query.data.items;
+			});
 		}
 	},
-
-	create(){
-		axios({
-			url: "https://localhost:4000",
-			method: "post",
-			data: {
-				query:`{
-					 prefixes{
-						id
-						type
-						description
-					}
-					sufixes{
-						id
-						type
-						description
-					}
-				}`
+	computed: {
+		domains() {
+			console.log("generating domains...");
+			const domains = [];
+			for (const prefix of this.items.prefix) {
+				for (const suffix of this.items.suffix) {
+					const name = prefix.description + suffix.description;
+					const url = name.toLowerCase();
+					const checkout = `https://checkout.hostgator.com.br/?a=add&sld=${url}&tld=.com.br`;
+					domains.push({
+						name,
+						checkout
+					});
+				}
 			}
-		}).then(response =>{
-			console.log(response);
-		});
+			return domains;
+		}
+	},
+	created() {
+		this.getItems("prefix");
+		this.getItems("suffix");
 	}
 };
 </script>
 
+<style>
+</style>
