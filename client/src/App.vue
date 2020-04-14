@@ -7,7 +7,8 @@
 		</div>
 		
 		<div id="main">
-			<DomainList></DomainList>
+			
+			<router-view></router-view>
 		</div>
 	</div>
 </template>
