@@ -22,6 +22,7 @@
 										<a class="btn btn-info" v-bind:href="domain.checkout" target="_blank">
 											<span class="fa fa-shopping-cart"></span>
 										</a>
+									
 									</div>
 								</div>
 							</li>
