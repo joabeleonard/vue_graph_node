@@ -64,14 +64,6 @@ export default {
 			...mapState["items","domains"]
 			
 		}
-	},
-	created() {
-		Promise.all([
-			this.getItems("prefix"),
-			this.getItems("suffix")
-		]).then(() => {
-			this.generateDomains();
-		});
 	}
 };
 </script>
